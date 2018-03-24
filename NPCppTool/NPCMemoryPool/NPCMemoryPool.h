@@ -50,6 +50,7 @@ namespace NPCL
 		}
 
 		//CMemBlock::CMemBlock(const CMemBlock<T>& base) <- not this
+		/*
 		CMemBlock(const CMemBlock<T>& base)
 		{
 			m_nBlockTotal = base.m_nBlockTotal;
@@ -57,6 +58,16 @@ namespace NPCL
 			m_nSize = base.m_nSize;
 			n_pHeapHandle = base.n_pHeapHandle;
 			m_vecBlockUsed = base.m_vecBlockUsed;
+		}
+		*/
+
+		CMemBlock(CMemBlock<T>&& base) noexcept
+		{
+			m_nBlockTotal = std::move(base.m_nBlockTotal);
+			m_nBlockUsed = std::move(base.m_nBlockUsed);
+			m_nSize = std::move(base.m_nSize);
+			n_pHeapHandle = std::move(base.n_pHeapHandle);
+			m_vecBlockUsed.swap(base.m_vecBlockUsed);
 		}
 
 		CMemBlock::~CMemBlock()
@@ -185,6 +196,13 @@ namespace NPCL
 		{
 		};
 
+		NPCMemoryPool(NPCMemoryPool<T, Cnt>&& base) noexcept
+		{
+			m_nSize = std::move(base.m_nSize);
+			m_nBlockTotal = std::move(base.m_nBlockTotal);
+			m_memBlocks.swap(base.m_memBlocks);
+		}
+
 		NPCMemoryPool::~NPCMemoryPool()
 		{
 			Clear();
@@ -253,9 +271,5 @@ namespace NPCL
 		std::vector<CMemBlock<T>> m_memBlocks;
 		size_t m_nSize  =0 ;
 		int m_nBlockTotal = 0;
-
-		//unsigned char * m_pPageBegin = __nullptr;
-		//int nCurrentSize = 0;
-		//HANDLE n_pHeapHandle;
 	};
 }
