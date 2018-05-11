@@ -21,9 +21,15 @@
     <ClInclude Include="LoadTest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="KoreanIME.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LoadTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KoreanIME.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
