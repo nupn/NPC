@@ -13,6 +13,10 @@ void CKoreanIME::InputCharacter(unsigned int input)
 	{
 		__OnSpace();
 	}
+	else if (__IsKorean())
+	{
+		__InsertCharKR(input, __IsShift());
+	}
 	else
 	{
 		__InsertChar(input, __IsShift());
@@ -22,21 +26,24 @@ void CKoreanIME::InputCharacter(unsigned int input)
 
 void CKoreanIME::OnSpace()
 {
-	__DeleteChar();
+	__OnSpace();
 }
 
 void CKoreanIME::OnDelete()
 {
-	__OnSpace();
+	__DeleteChar();
 }
 
-void CKoreanIME::CursorMove(int nIdx)
+bool CKoreanIME::SetCursor(int nIdx)
 {
 	if (m_nCursorIdx >= 0 && m_nCursorIdx <= nCharlen)
 	{
 		nCursorState = kCusorInsert;
 		m_nCursorIdx = nIdx;
+		return true;
 	}
+
+	return false;
 }
 
 int CKoreanIME::GetCursorIdx() const
@@ -68,7 +75,7 @@ bool CKoreanIME::__IsKorean() const
 
 
 // 유니코드 문자값이 음절(조합)인지
-bool CKoreanIME::__IsCombinded(TCHAR character) const
+bool CKoreanIME::__IsCombinded(const TCHAR character) inline const
 {
 	if (character >= 0xAC00 && character <= 0xD7AF)
 	{
@@ -79,7 +86,7 @@ bool CKoreanIME::__IsCombinded(TCHAR character) const
 }
 
 // 유니코드 문자값이 자모(단독)인지
-bool CKoreanIME::__IsSingle(TCHAR character) const
+bool CKoreanIME::__IsSingle(const TCHAR character) inline const
 {
 	TCHAR nRelativeIdx = character;
 	if (nRelativeIdx >= 0x3131 && nRelativeIdx <= 0x3163)
@@ -1034,10 +1041,25 @@ void CKoreanIME::__PushChar(unsigned int character, const bool bShift)
 {
 	++m_nCursorIdx;
 	nCursorState = kCusorInsert;
-	__InsertChar(character, bShift, true);
+	__InsertCharKR(character, bShift, true);
 }
 
-void CKoreanIME::__InsertChar(unsigned int character, const bool bShift, bool bPullPrev)
+void CKoreanIME::__InsertChar(unsigned int character, const bool bShift)
+{
+	if (nCursorState == kCursorTyping)
+	{
+		++m_nCursorIdx;
+	}
+
+	__MemMoveBack(m_nCursorIdx);
+
+	inputChar[m_nCursorIdx] = character;
+	++m_nCursorIdx;
+	++nCharlen;
+	nCursorState = kCusorInsert;
+}
+
+void CKoreanIME::__InsertCharKR(unsigned int character, const bool bShift, bool bPullPrev)
 {
 	if ((character >= 65 && character <= 90) ||
 		character >= 97 && character <= 122)
@@ -1246,10 +1268,8 @@ void CKoreanIME::__OnSpace()
 std::string CKoreanIME::GetString() const
 {
 	///*
-	int nlen = 2 * nCharlen + 1;
+	int nlen = __CalcCharSize();
 	char* psz = new char[nlen];
-
-	char dd[3] = { 0, };
 
 	WideCharToMultiByte(CP_UTF8, 0, inputChar, nlen, psz, nlen, NULL, NULL);
 	/*
@@ -1292,4 +1312,25 @@ int CKoreanIME::GetState() const
 {
 	return nCursorState;
 }
+
+int CKoreanIME::__CalcCharSize() const
+{
+	int nCharSize = 0;
+	for (int i = 0; i < nCharlen; ++i)
+	{
+		const TCHAR* pWChar = &inputChar[i];
+		if (__IsCombinded(*pWChar) || __IsSingle(*pWChar))
+		{
+			nCharSize += 3;
+		}
+		else
+		{
+			nCharSize += 1;
+		}
+	}
+
+	return nCharSize;
 }
+
+}
+

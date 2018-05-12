@@ -16,7 +16,7 @@ namespace NPCL
 		virtual ~CKoreanIME() = default;
 
 		void InputCharacter(unsigned int input);
-		void CursorMove(int nIdx);
+		bool SetCursor(int nIdx);
 		int GetCursorIdx() const;
 
 		std::string GetString() const;
@@ -32,9 +32,9 @@ namespace NPCL
 		bool __IsShift() const;
 		bool __IsKorean() const;
 		// 유니코드 문자값이 음절(조합)인지
-		bool __IsCombinded(TCHAR character) const;
+		bool __IsCombinded(const TCHAR character) inline const;
 		// 유니코드 문자값이 자모(단독)인지
-		bool __IsSingle(TCHAR character) const;
+		bool __IsSingle(const TCHAR character) inline const;
 
 		// 조합된 문자에서 초성 추출
 		int __ResolveInitialCharIdx(TCHAR character) const;
@@ -78,9 +78,13 @@ namespace NPCL
 		void __MemMoveFront(int nCursorIdx);
 
 		void __PushChar(unsigned int character, const bool bShift);
-		void __InsertChar(unsigned int character, const bool bShift, bool bPullPrev = false);
+		void __InsertCharKR(unsigned int character, const bool bShift, bool bPullPrev = false);
+		void __InsertChar(unsigned int character, const bool bShift);
 		void __DeleteChar();
 		void __OnSpace();
+
+
+		int __CalcCharSize() const;
 
 	private:
 		int nCursorState = kCusorInsert;
