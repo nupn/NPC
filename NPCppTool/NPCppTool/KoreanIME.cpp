@@ -13,7 +13,9 @@ void CKoreanIME::InputCharacter(unsigned int input)
 	{
 		__OnSpace();
 	}
-	else if (__IsKorean())
+	else if (__IsKorean() && (
+		(input >= 65 && input <= 90) ||
+		(input >= 97 && input <= 122)))
 	{
 		__InsertCharKR(input, __IsShift());
 	}
@@ -1061,138 +1063,134 @@ void CKoreanIME::__InsertChar(unsigned int character, const bool bShift)
 
 void CKoreanIME::__InsertCharKR(unsigned int character, const bool bShift, bool bPullPrev)
 {
-	if ((character >= 65 && character <= 90) ||
-		character >= 97 && character <= 122)
+	if (nCursorState == kCusorInsert)
 	{
-		if (nCursorState == kCusorInsert)
+		bool bInsert = true;
+		if (bPullPrev && m_nCursorIdx > 0)
 		{
-			bool bInsert = true;
-			if (bPullPrev && m_nCursorIdx > 0)
+			auto prevChar = inputChar[m_nCursorIdx - 1];
+			if (__IsCombinded(prevChar) && !__IsInputConsonat(character))
 			{
-				auto prevChar = inputChar[m_nCursorIdx - 1];
-				if (__IsCombinded(prevChar) && !__IsInputConsonat(character))
-				{
-					int lastIdx = __ResolveFinalCharidx(prevChar);
-					int firstIdx = __ConvertFinalIdxToInitialIdx(lastIdx);
-					if (firstIdx >= 0)
-					{
-						//이전글자에서 빼기
-						int prevFirstIdx = __ResolveInitialCharIdx(prevChar);
-						int prevSecodeIdx = __ResolveMedivalCharIdx(prevChar);
-						lastIdx = __FinalIdxDivide(lastIdx);
-						inputChar[m_nCursorIdx - 1] = GetCombinedKorean(prevFirstIdx, prevSecodeIdx, lastIdx);
-
-						//다음글자에추가
-						int middleIdx = __InputToMedivalIdx(character, bShift);
-						__MemMoveBack(m_nCursorIdx);
-						inputChar[m_nCursorIdx] = GetCombinedKorean(firstIdx, middleIdx, 0);
-						bInsert = false;
-					}
-				}
-			}
-
-			if (bInsert)
-			{
-				__MemMoveBack(m_nCursorIdx);
-				int nInput = __InputToSingleChar(character, bShift);
-				if (nInput == -1)
-				{
-					nInput = 32;
-				}
-
-				inputChar[m_nCursorIdx] = nInput;
-			}
-			++nCharlen;
-			nCursorState = kCursorTyping;
-		}
-		else if (nCursorState == kCursorTyping)
-		{
-			int prevChar = inputChar[m_nCursorIdx];
-			if (__IsSingle(prevChar)) // 이미 입력된 문자가 한글인지도 체크된다.
-			{
-				//자음인지 체크
-				if (prevChar >= 0x3131 && prevChar <= 0x314E)
-				{
-					//자음일때는 모음만가능
-					if (!__IsInputConsonat(character))
-					{
-						int choIdx = __SingleCharToInitialIdx(prevChar);
-						int jungIdx = __InputToMedivalIdx(character, bShift);
-						inputChar[m_nCursorIdx] = GetCombinedKorean(choIdx, jungIdx, 0);
-					}
-					else
-					{
-						//다음칸에 입력
-						__PushChar(character, bShift);
-					}
-				}
-				else
-				{
-					int newMainChar = __InputToSingleCharWithPrev(prevChar, character);
-					if (newMainChar != -1)
-					{
-						inputChar[m_nCursorIdx] = newMainChar;
-					}
-					else
-					{
-						__PushChar(character, bShift);
-					}
-					//이미 입력된게 모음이라면 중첩되는지 체크
-				}
-			}
-			else if (__IsCombinded(prevChar))//조합형일때
-			{
-				int firstIdx = __ResolveInitialCharIdx(prevChar);
-				int secodeIdx = __ResolveMedivalCharIdx(prevChar);
 				int lastIdx = __ResolveFinalCharidx(prevChar);
-
-				if (lastIdx == 0)
+				int firstIdx = __ConvertFinalIdxToInitialIdx(lastIdx);
+				if (firstIdx >= 0)
 				{
-					int nSubCodeOverlaped = __InputToMedivalIdxWithPrev(secodeIdx, character, bShift);
-					if (__IsInputConsonat(character))
-					{
-						//종성이없는데 입력된게 자음일때
-						lastIdx = __InputToFinalChar(character, bShift);//종성에 불가능한자음을 Shite와 누른경우
-						if (lastIdx >= 0)
-						{
-							inputChar[m_nCursorIdx] = GetCombinedKorean(firstIdx, secodeIdx, lastIdx);
-						}
-						else
-						{
-							__PushChar(character, bShift);
-						}
-					}
-					else if (nSubCodeOverlaped != -1)
-					{
-						//종성이없는데 입력된게 모음이이고 모음이 조합될때
-						inputChar[m_nCursorIdx] = GetCombinedKorean(firstIdx, nSubCodeOverlaped, 0);
-					}
-					else
-					{
-						//종성이없는데 입력된게 모음이고 모음이 조합안되는경우
-						__PushChar(character, bShift);
-					}
+					//이전글자에서 빼기
+					int prevFirstIdx = __ResolveInitialCharIdx(prevChar);
+					int prevSecodeIdx = __ResolveMedivalCharIdx(prevChar);
+					lastIdx = __FinalIdxDivide(lastIdx);
+					inputChar[m_nCursorIdx - 1] = GetCombinedKorean(prevFirstIdx, prevSecodeIdx, lastIdx);
+
+					//다음글자에추가
+					int middleIdx = __InputToMedivalIdx(character, bShift);
+					__MemMoveBack(m_nCursorIdx);
+					inputChar[m_nCursorIdx] = GetCombinedKorean(firstIdx, middleIdx, 0);
+					bInsert = false;
+				}
+			}
+		}
+
+		if (bInsert)
+		{
+			__MemMoveBack(m_nCursorIdx);
+			int nInput = __InputToSingleChar(character, bShift);
+			if (nInput == -1)
+			{
+				nInput = 32;
+			}
+
+			inputChar[m_nCursorIdx] = nInput;
+		}
+		++nCharlen;
+		nCursorState = kCursorTyping;
+	}
+	else if (nCursorState == kCursorTyping)
+	{
+		int prevChar = inputChar[m_nCursorIdx];
+		if (__IsSingle(prevChar)) // 이미 입력된 문자가 한글인지도 체크된다.
+		{
+			//자음인지 체크
+			if (prevChar >= 0x3131 && prevChar <= 0x314E)
+			{
+				//자음일때는 모음만가능
+				if (!__IsInputConsonat(character))
+				{
+					int choIdx = __SingleCharToInitialIdx(prevChar);
+					int jungIdx = __InputToMedivalIdx(character, bShift);
+					inputChar[m_nCursorIdx] = GetCombinedKorean(choIdx, jungIdx, 0);
 				}
 				else
 				{
-					int lastOverlapIdx = __InputToFinalCharWithPrev(lastIdx, character);
-					if (__IsInputConsonat(character) && lastOverlapIdx != -1 && bShift == false)
-					{
-						//종성과 입력된 자음이 조합될때
-						inputChar[m_nCursorIdx] = GetCombinedKorean(firstIdx, secodeIdx, lastOverlapIdx);
-					}
-					else
-					{
-						// 종성이있고 입력된게 자음이고 자음이 조합안될때
-						// 종성이있고 입력된게 모음
-						__PushChar(character, bShift);
-					}
+					//다음칸에 입력
+					__PushChar(character, bShift);
 				}
 			}
 			else
 			{
-				__PushChar(character, bShift);
+				int newMainChar = __InputToSingleCharWithPrev(prevChar, character);
+				if (newMainChar != -1)
+				{
+					inputChar[m_nCursorIdx] = newMainChar;
+				}
+				else
+				{
+					__PushChar(character, bShift);
+				}
+				//이미 입력된게 모음이라면 중첩되는지 체크
 			}
+		}
+		else if (__IsCombinded(prevChar))//조합형일때
+		{
+			int firstIdx = __ResolveInitialCharIdx(prevChar);
+			int secodeIdx = __ResolveMedivalCharIdx(prevChar);
+			int lastIdx = __ResolveFinalCharidx(prevChar);
+
+			if (lastIdx == 0)
+			{
+				int nSubCodeOverlaped = __InputToMedivalIdxWithPrev(secodeIdx, character, bShift);
+				if (__IsInputConsonat(character))
+				{
+					//종성이없는데 입력된게 자음일때
+					lastIdx = __InputToFinalChar(character, bShift);//종성에 불가능한자음을 Shite와 누른경우
+					if (lastIdx >= 0)
+					{
+						inputChar[m_nCursorIdx] = GetCombinedKorean(firstIdx, secodeIdx, lastIdx);
+					}
+					else
+					{
+						__PushChar(character, bShift);
+					}
+				}
+				else if (nSubCodeOverlaped != -1)
+				{
+					//종성이없는데 입력된게 모음이이고 모음이 조합될때
+					inputChar[m_nCursorIdx] = GetCombinedKorean(firstIdx, nSubCodeOverlaped, 0);
+				}
+				else
+				{
+					//종성이없는데 입력된게 모음이고 모음이 조합안되는경우
+					__PushChar(character, bShift);
+				}
+			}
+			else
+			{
+				int lastOverlapIdx = __InputToFinalCharWithPrev(lastIdx, character);
+				if (__IsInputConsonat(character) && lastOverlapIdx != -1 && bShift == false)
+				{
+					//종성과 입력된 자음이 조합될때
+					inputChar[m_nCursorIdx] = GetCombinedKorean(firstIdx, secodeIdx, lastOverlapIdx);
+				}
+				else
+				{
+					// 종성이있고 입력된게 자음이고 자음이 조합안될때
+					// 종성이있고 입력된게 모음
+					__PushChar(character, bShift);
+				}
+			}
+		}
+		else
+		{
+			__PushChar(character, bShift);
 		}
 	}
 }
